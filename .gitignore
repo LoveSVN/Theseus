@@ -1,0 +1,84 @@
+# Xcode
+build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Xcode playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# CocoaPods
+Pods/
+*.xcworkspace
+
+# Carthage
+Carthage/Build/
+Carthage/Checkouts/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/
+
+# Code Injection
+iOSInjectionProject/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Thumbnails
+*~
+*.swp
+*.lock
+profile
+
+# Icon must end with two \r
+Icon?
+
+# Archives
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Provisioning profiles
+*.mobileprovision
+*.provisionprofile
+
+# Credentials
+*.p8
+*.p12
+*.cer
+
+# Crashlytics
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+
+# Environment files
+.env
+.env.*
+*.xcconfig.local
+
+# IDE
+.idea/
+*.hmap
+*.ipa
+*.xcuserstate
+
+# Generated files
+*.generated.swift
+Pods/
+
+# Local
+local.properties

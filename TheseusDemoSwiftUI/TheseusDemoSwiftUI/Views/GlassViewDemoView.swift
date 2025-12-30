@@ -543,7 +543,7 @@ class GlassDemoContainer: UIView {
                     balloonPhysics[index].velocity.x = -balloonPhysics[index].velocity.x * 0.5
                 }
 
-                let minY: CGFloat = 100
+                let minY = balloon.bounds.height / 2
                 if newCenter.y < minY {
                     newCenter.y = minY
                     balloonPhysics[index].velocity.y = -balloonPhysics[index].velocity.y * 0.5
@@ -564,8 +564,15 @@ class GlassDemoContainer: UIView {
                 balloonPhysics[index].targetVelocity.x = balloonPhysics[index].targetVelocity.x * dampingFactor + dx * springFactor
                 balloonPhysics[index].targetVelocity.y = balloonPhysics[index].targetVelocity.y * dampingFactor + dy * springFactor
 
-                balloon.center.x += balloonPhysics[index].targetVelocity.x
-                balloon.center.y += balloonPhysics[index].targetVelocity.y
+                var newX = balloon.center.x + balloonPhysics[index].targetVelocity.x
+                var newY = balloon.center.y + balloonPhysics[index].targetVelocity.y
+
+                let padding = balloon.bounds.width / 2
+                newX = max(padding, min(bounds.width - padding, newX))
+                newY = max(padding, min(bounds.height - padding, newY))
+
+                balloon.center.x = newX
+                balloon.center.y = newY
 
                 let appearThreshold = CGFloat(index) * 0.06
                 let targetAlpha = max(0, min(1, (dragProgress - appearThreshold) * 4))

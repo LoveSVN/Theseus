@@ -213,6 +213,10 @@ class ViewDemoViewController: UIViewController {
         theseusView.edgeEffects.lightAngle = CGFloat(currentGlareAngle) * .pi / 180
         theseusView.theme.tintColor = Defaults.tintColors[currentTintColorIndex]
         theseusView.continuousUpdate = currentContinuousUpdate
+
+        // Clear specular colors to prevent white edge artifacts
+        theseusView.edgeEffects.nearColor = .clear
+        theseusView.edgeEffects.farColor = .clear
     }
 
     private func setupTheseusView() {
@@ -224,6 +228,9 @@ class ViewDemoViewController: UIViewController {
         config.refraction.intensity = CGFloat(Defaults.refractionFactor)
         config.shape.padding = CGPoint(x: 15, y: 15)
         config.theme.tintColor = .clear  // Transparent liquid glass
+        // Clear specular colors to prevent white edge artifacts
+        config.edgeEffects.nearColor = .clear
+        config.edgeEffects.farColor = .clear
 
         theseusView = TheseusView(configuration: config)
         theseusView.sourceView = view  // Use view for mutual refraction with other glass
@@ -403,6 +410,9 @@ class ViewDemoViewController: UIViewController {
             balloonConfig.refraction.intensity = 1.6  // More dramatic refraction
             balloonConfig.theme.tintColor = .clear  // Transparent liquid glass
             balloonConfig.shape.padding = CGPoint(x: 10, y: 10)
+            // Clear specular colors to prevent white edge artifacts
+            balloonConfig.edgeEffects.nearColor = .clear
+            balloonConfig.edgeEffects.farColor = .clear
 
             let balloon = TheseusView(configuration: balloonConfig)
             balloon.sourceView = view  // Use view for mutual refraction with other glass

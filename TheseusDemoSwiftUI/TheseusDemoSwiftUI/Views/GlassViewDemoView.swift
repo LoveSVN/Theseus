@@ -274,6 +274,10 @@ class GlassDemoContainer: UIView {
         theseusView.edgeEffects.rimGlow = currentFresnelFactor
         theseusView.edgeEffects.lightAngle = currentGlareAngle * .pi / 180
         theseusView.continuousUpdate = currentContinuousUpdate
+
+        // Clear specular colors to prevent white edge artifacts
+        theseusView.edgeEffects.nearColor = .clear
+        theseusView.edgeEffects.farColor = .clear
     }
 
     // MARK: - Theseus View Setup
@@ -287,6 +291,9 @@ class GlassDemoContainer: UIView {
         config.refraction.intensity = currentRefractionFactor
         config.shape.padding = CGPoint(x: 15, y: 15)
         config.theme.tintColor = .clear
+        // Clear specular colors to prevent white edge artifacts
+        config.edgeEffects.nearColor = .clear
+        config.edgeEffects.farColor = .clear
 
         theseusView = TheseusView(configuration: config)
         theseusView.sourceView = self
@@ -450,6 +457,9 @@ class GlassDemoContainer: UIView {
             balloonConfig.refraction.intensity = 1.6
             balloonConfig.theme.tintColor = .clear
             balloonConfig.shape.padding = CGPoint(x: 10, y: 10)
+            // Clear specular colors to prevent white edge artifacts
+            balloonConfig.edgeEffects.nearColor = .clear
+            balloonConfig.edgeEffects.farColor = .clear
 
             let balloon = TheseusView(configuration: balloonConfig)
             balloon.sourceView = self

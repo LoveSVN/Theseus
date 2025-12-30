@@ -70,12 +70,20 @@ struct TheseusTabBarRepresentable: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: TheseusTabBar, context: Context) {
-        uiView.items = items
+        // Only update items if count changed to avoid rebuild
+        if uiView.items.count != items.count {
+            uiView.items = items
+        }
         uiView.selectedIndex = selectedIndex
         uiView.selectedTintColor = selectedTintColor
         uiView.unselectedTintColor = unselectedTintColor
-        uiView.glassBlurRadius = glassBlurRadius
-        uiView.glassRefractionFactor = glassRefractionFactor
+        // Only update glass properties if changed to avoid invalidation during drag
+        if uiView.glassBlurRadius != glassBlurRadius {
+            uiView.glassBlurRadius = glassBlurRadius
+        }
+        if uiView.glassRefractionFactor != glassRefractionFactor {
+            uiView.glassRefractionFactor = glassRefractionFactor
+        }
     }
 
     class Coordinator {

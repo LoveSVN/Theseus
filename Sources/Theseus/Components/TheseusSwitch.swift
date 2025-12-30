@@ -379,10 +379,24 @@ public class TheseusSwitch: UIControl {
               let sourceView = theseusSourceView else { return }
 
         var config = TheseusConfiguration()
-        config.refraction.edgeWidth = 8
+        config.refraction.edgeWidth = 7
+        config.refraction.intensity = 1.15        // Balanced - visible but less green
         config.shape.padding = CGPoint(x: 10, y: 10)
         config.capturePadding = layout.glassPadding
         config.shape.cornerRadius = layout.glassCornerRadius
+
+        // Moderate blur
+        config.blur.radius = 2.5
+
+        // Visible rim glow for iridescence
+        config.edgeEffects.rimGlow = 0.6
+        config.edgeEffects.glareIntensity = 1.0
+        config.edgeEffects.rimRange = 50.0
+        config.edgeEffects.nearColor = .clear
+        config.edgeEffects.farColor = .clear
+
+        // Use more reliable capture method
+        config.captureMethod = .layerRendering
 
         let glass = TheseusView(configuration: config)
         glass.sourceView = sourceView

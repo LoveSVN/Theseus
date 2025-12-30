@@ -180,7 +180,8 @@ struct TabBarSettingsSheet: View {
 }
 
 #Preview {
-    NavigationView {
-        TabBarDemoView()
-    }
+  NativeTabBarRepresentable(
+    selectedIndex: .constant(1),
+    tintColor: .blue
+  )
 }

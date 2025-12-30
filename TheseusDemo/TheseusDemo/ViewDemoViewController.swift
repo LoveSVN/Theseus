@@ -1,19 +1,60 @@
 import UIKit
 import Theseus
 
+// MARK: - Balloon Configuration
+
+struct BalloonConfig {
+    let symbolName: String
+    let tintColor: UIColor  // For SF Symbol only, glass is clear
+    let size: CGFloat
+    let targetAngle: CGFloat
+    let targetRadius: CGFloat
+}
+
+struct BalloonPhysicsState {
+    var velocity: CGPoint = .zero
+    var targetVelocity: CGPoint = .zero  // For smooth interpolation when following
+    var isReleased: Bool = false
+    var isDragging: Bool = false
+}
+
 class ViewDemoViewController: UIViewController {
+
+    // MARK: - Balloon Configs
+
+    private let balloonConfigs: [BalloonConfig] = [
+        BalloonConfig(symbolName: "heart.fill", tintColor: .systemPink, size: 60, targetAngle: -.pi * 0.85, targetRadius: 140),
+        BalloonConfig(symbolName: "star.fill", tintColor: .systemYellow, size: 55, targetAngle: -.pi * 0.6, targetRadius: 170),
+        BalloonConfig(symbolName: "bell.fill", tintColor: .systemBlue, size: 50, targetAngle: -.pi * 0.35, targetRadius: 155),
+        BalloonConfig(symbolName: "bolt.fill", tintColor: .systemOrange, size: 58, targetAngle: -.pi * 0.1, targetRadius: 145),
+        BalloonConfig(symbolName: "leaf.fill", tintColor: .systemGreen, size: 52, targetAngle: .pi * 0.1, targetRadius: 160),
+        BalloonConfig(symbolName: "drop.fill", tintColor: .systemTeal, size: 56, targetAngle: .pi * 0.35, targetRadius: 150),
+        BalloonConfig(symbolName: "flame.fill", tintColor: .systemRed, size: 54, targetAngle: .pi * 0.6, targetRadius: 165),
+        BalloonConfig(symbolName: "sparkles", tintColor: .systemPurple, size: 60, targetAngle: .pi * 0.85, targetRadius: 145)
+    ]
+
+    // MARK: - Properties
 
     private let backgroundImageView = UIImageView()
     private var theseusView: TheseusView!
     private var gestureHandler: TheseusGestureDeformer?
 
-    // Default values (from patch.diff / TheseusConfiguration)
+    // Balloon views
+    private var balloonViews: [TheseusView] = []
+    private var balloonPhysics: [BalloonPhysicsState] = []
+    private var balloonGestureHandlers: [TheseusGestureDeformer] = []
+    private var displayLink: CADisplayLink?
+    private var dragProgress: CGFloat = 0
+    private var pulsePhase: CGFloat = 0
+    private var lensRestingY: CGFloat = 0
+
+    // Defaults tuned for dramatic refraction showcase
     private struct Defaults {
-        static let blurRadius: Float = 10.0
-        static let cornerRadius: Float = 16.0
-        static let refractionFactor: Float = 1.42
-        static let fresnelFactor: Float = 1.0
-        static let glareAngle: Float = 45.0
+        static let blurRadius: Float = 12.0
+        static let cornerRadius: Float = 40.0
+        static let refractionFactor: Float = 1.8
+        static let fresnelFactor: Float = 1.4
+        static let glareAngle: Float = 135.0
         static let tintColorIndex = 0
         static let continuousUpdate = false
 
@@ -45,7 +86,9 @@ class ViewDemoViewController: UIViewController {
         setupBackground()
         setupNavigationBar()
         setupTheseusView()
+        setupBalloonViews()
         applyDefaults()
+        startAnimationLoop()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -59,27 +102,26 @@ class ViewDemoViewController: UIViewController {
         backgroundImageView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(backgroundImageView)
 
-        updateBackgroundGradient()
-        addDecorations()
+        updateBackground()
     }
 
-    private func updateBackgroundGradient() {
+    private func updateBackground() {
         let gradientLayer = CAGradientLayer()
         gradientLayer.frame = view.bounds
 
         if isDarkMode {
             gradientLayer.colors = [
-                UIColor(red: 0.18, green: 0.15, blue: 0.22, alpha: 1.0).cgColor,
-                UIColor(red: 0.20, green: 0.18, blue: 0.22, alpha: 1.0).cgColor,
-                UIColor(red: 0.22, green: 0.20, blue: 0.18, alpha: 1.0).cgColor,
-                UIColor(red: 0.22, green: 0.22, blue: 0.18, alpha: 1.0).cgColor
+                UIColor(red: 0.12, green: 0.10, blue: 0.28, alpha: 1.0).cgColor,
+                UIColor(red: 0.22, green: 0.12, blue: 0.22, alpha: 1.0).cgColor,
+                UIColor(red: 0.28, green: 0.18, blue: 0.12, alpha: 1.0).cgColor,
+                UIColor(red: 0.12, green: 0.22, blue: 0.28, alpha: 1.0).cgColor
             ]
         } else {
             gradientLayer.colors = [
-                UIColor(red: 0.88, green: 0.82, blue: 0.95, alpha: 1.0).cgColor,
-                UIColor(red: 0.92, green: 0.80, blue: 0.88, alpha: 1.0).cgColor,
-                UIColor(red: 0.95, green: 0.88, blue: 0.82, alpha: 1.0).cgColor,
-                UIColor(red: 0.95, green: 0.92, blue: 0.82, alpha: 1.0).cgColor
+                UIColor(red: 0.92, green: 0.82, blue: 0.98, alpha: 1.0).cgColor,
+                UIColor(red: 0.82, green: 0.95, blue: 0.98, alpha: 1.0).cgColor,
+                UIColor(red: 0.98, green: 0.95, blue: 0.82, alpha: 1.0).cgColor,
+                UIColor(red: 0.98, green: 0.82, blue: 0.88, alpha: 1.0).cgColor
             ]
         }
         gradientLayer.startPoint = CGPoint(x: 0, y: 0)
@@ -93,23 +135,7 @@ class ViewDemoViewController: UIViewController {
         UIGraphicsEndImageContext()
 
         backgroundImageView.image = gradientImage
-    }
-
-    private func addDecorations() {
-        let colors: [UIColor] = [.white, .systemTeal, .systemGreen]
-        for i in 0..<5 {
-            let circle = UIView()
-            let size = CGFloat.random(in: 40...120)
-            circle.frame = CGRect(
-                x: CGFloat.random(in: 0...view.bounds.width - size),
-                y: CGFloat.random(in: 100...view.bounds.height - 200),
-                width: size,
-                height: size
-            )
-            circle.backgroundColor = colors[i % colors.count].withAlphaComponent(0.3)
-            circle.layer.cornerRadius = size / 2
-            backgroundImageView.addSubview(circle)
-        }
+        backgroundImageView.subviews.forEach { $0.removeFromSuperview() }
     }
 
     private func setupNavigationBar() {
@@ -142,7 +168,7 @@ class ViewDemoViewController: UIViewController {
             items[0].image = UIImage(systemName: isDarkMode ? "sun.max.fill" : "moon.fill")
         }
 
-        updateBackgroundGradient()
+        updateBackground()
     }
 
     @objc private func showSettings() {
@@ -190,19 +216,346 @@ class ViewDemoViewController: UIViewController {
     }
 
     private func setupTheseusView() {
+        let lensSize: CGFloat = 80
+
         var config = TheseusConfiguration()
         config.blur.radius = CGFloat(Defaults.blurRadius)
-        config.shape.cornerRadius = CGFloat(Defaults.cornerRadius)
+        config.shape.cornerRadius = lensSize / 2  // Perfect circle
         config.refraction.intensity = CGFloat(Defaults.refractionFactor)
         config.shape.padding = CGPoint(x: 15, y: 15)
+        config.theme.tintColor = .clear  // Transparent liquid glass
 
         theseusView = TheseusView(configuration: config)
-        theseusView.sourceView = backgroundImageView
-        theseusView.frame = CGRect(x: 80, y: 200, width: 200, height: 150)
+        theseusView.sourceView = view  // Use view for mutual refraction with other glass
+
+        // Position at bottom center
+        lensRestingY = view.bounds.height - 120
+        theseusView.frame = CGRect(
+            x: (view.bounds.width - lensSize) / 2,
+            y: lensRestingY - lensSize / 2,
+            width: lensSize,
+            height: lensSize
+        )
         view.addSubview(theseusView)
 
+        setupGestureHandler()
+
+        // Hand icon instead of text
+        let handIcon = UIImageView(image: UIImage(systemName: "hand.point.up.fill"))
+        handIcon.tintColor = .label
+        handIcon.contentMode = .scaleAspectFit
+        handIcon.translatesAutoresizingMaskIntoConstraints = false
+        theseusView.addSubview(handIcon)
+
+        NSLayoutConstraint.activate([
+            handIcon.centerXAnchor.constraint(equalTo: theseusView.centerXAnchor),
+            handIcon.centerYAnchor.constraint(equalTo: theseusView.centerYAnchor),
+            handIcon.widthAnchor.constraint(equalToConstant: 28),
+            handIcon.heightAnchor.constraint(equalToConstant: 28)
+        ])
+
+        // Double-tap to reset balloons
+        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap))
+        doubleTap.numberOfTapsRequired = 2
+        theseusView.addGestureRecognizer(doubleTap)
+    }
+
+    @objc private func handleDoubleTap() {
+        resetBalloons()
+    }
+
+    private func resetBalloons() {
+        // Remove all balloon gesture handlers
+        balloonGestureHandlers.removeAll()
+
+        // Animate balloons back to hidden state
+        UIView.animate(withDuration: 0.4, delay: 0, usingSpringWithDamping: 0.8, initialSpringVelocity: 0.5, options: []) {
+            for (index, balloon) in self.balloonViews.enumerated() {
+                self.balloonPhysics[index] = BalloonPhysicsState()
+                balloon.alpha = 0
+                balloon.center = CGPoint(x: self.view.bounds.width / 2, y: self.lensRestingY)
+                balloon.transform = .identity
+            }
+        }
+    }
+
+    private func setupGestureHandler() {
         gestureHandler = TheseusGestureDeformer(targetView: theseusView)
+
+        // Lock horizontal movement - only vertical dragging
         gestureHandler?.positionProvider = { [weak self] translation, currentCenter, bounds in
+            guard let self = self else { return nil }
+
+            // Only allow vertical movement
+            var newY = currentCenter.y + translation.y
+
+            // Constrain vertical movement
+            let topY: CGFloat = 180
+            let bottomY = self.lensRestingY
+
+            newY = max(topY, min(bottomY, newY))
+
+            // Calculate drag progress (0 at bottom, 1 at top)
+            self.dragProgress = 1.0 - (newY - topY) / (bottomY - topY)
+            self.dragProgress = max(0, min(1, self.dragProgress))
+
+            // Scale lens based on drag progress
+            let scale = 1.0 + self.dragProgress * 0.6
+            self.theseusView.transform = CGAffineTransform(scaleX: scale, y: scale)
+
+            return CGPoint(x: bounds.width / 2, y: newY)
+        }
+
+        gestureHandler?.onDragBegan = { [weak self] in
+            guard let self = self else { return }
+            self.theseusView.continuousUpdate = true
+            self.balloonViews.forEach { $0.continuousUpdate = true }
+        }
+
+        gestureHandler?.onDragEnded = { [weak self] velocity in
+            guard let self = self else { return }
+
+            // Release balloons into physics mode if they were dragged up
+            if self.dragProgress > 0.2 {
+                self.releaseBalloons()
+            }
+
+            // Calculate spring velocity from gesture for fluid feel
+            let distanceToRest = self.lensRestingY - self.theseusView.center.y
+            let springVelocity = distanceToRest != 0 ? abs(velocity.y / distanceToRest) * 0.3 : 0
+
+            // Animate lens back with smooth fluid spring
+            UIView.animate(
+                withDuration: 1.0,
+                delay: 0,
+                usingSpringWithDamping: 0.65,
+                initialSpringVelocity: springVelocity,
+                options: [.allowUserInteraction]
+            ) {
+                self.theseusView.center = CGPoint(x: self.view.bounds.width / 2, y: self.lensRestingY)
+                self.theseusView.transform = .identity
+            }
+
+            // Animate dragProgress back to 0
+            self.animateDragProgressToZero()
+
+            // Disable continuous update after animation fully settles
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                self.theseusView.continuousUpdate = false
+                // Keep released balloons updating for a bit longer
+                for (index, balloon) in self.balloonViews.enumerated() {
+                    if !self.balloonPhysics[index].isReleased {
+                        balloon.continuousUpdate = false
+                    }
+                }
+            }
+        }
+    }
+
+    private func animateDragProgressToZero() {
+        // Smoothly animate progress back - synced with spring duration
+        let startProgress = dragProgress
+        let duration: Double = 1.0
+        let startTime = CACurrentMediaTime()
+
+        let animator = CADisplayLink(target: self, selector: #selector(animateProgressTick))
+        animator.add(to: .main, forMode: .common)
+
+        // Store animation state
+        objc_setAssociatedObject(self, "progressAnimator", animator, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(self, "startProgress", startProgress, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(self, "animStartTime", startTime, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(self, "animDuration", duration, .OBJC_ASSOCIATION_RETAIN)
+    }
+
+    @objc private func animateProgressTick() {
+        guard let animator = objc_getAssociatedObject(self, "progressAnimator") as? CADisplayLink,
+              let startProgress = objc_getAssociatedObject(self, "startProgress") as? CGFloat,
+              let startTime = objc_getAssociatedObject(self, "animStartTime") as? Double,
+              let duration = objc_getAssociatedObject(self, "animDuration") as? Double else { return }
+
+        let elapsed = CACurrentMediaTime() - startTime
+        let t = min(1.0, elapsed / duration)
+
+        // Smooth ease-in-out curve to match spring feel
+        let eased: CGFloat
+        if t < 0.5 {
+            eased = 2.0 * t * t
+        } else {
+            eased = 1.0 - pow(-2.0 * t + 2.0, 2) / 2.0
+        }
+        dragProgress = startProgress * (1.0 - eased)
+
+        if t >= 1.0 {
+            dragProgress = 0
+            animator.invalidate()
+            objc_setAssociatedObject(self, "progressAnimator", nil, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+
+    // MARK: - Balloon Views
+
+    private func setupBalloonViews() {
+        for config in balloonConfigs {
+            var balloonConfig = TheseusConfiguration()
+            balloonConfig.shape.cornerRadius = config.size / 2
+            balloonConfig.blur.radius = 10  // More blur for dramatic refraction
+            balloonConfig.refraction.intensity = 1.6  // More dramatic refraction
+            balloonConfig.theme.tintColor = .clear  // Transparent liquid glass
+            balloonConfig.shape.padding = CGPoint(x: 10, y: 10)
+
+            let balloon = TheseusView(configuration: balloonConfig)
+            balloon.sourceView = view  // Use view for mutual refraction with other glass
+            balloon.frame = CGRect(x: 0, y: 0, width: config.size, height: config.size)
+            balloon.center = CGPoint(x: view.bounds.width / 2, y: lensRestingY)
+            balloon.alpha = 0
+
+            // SF Symbol inside (colored for visual distinction)
+            let symbol = UIImageView(image: UIImage(systemName: config.symbolName))
+            symbol.tintColor = config.tintColor
+            symbol.contentMode = .scaleAspectFit
+            symbol.translatesAutoresizingMaskIntoConstraints = false
+            balloon.addSubview(symbol)
+
+            NSLayoutConstraint.activate([
+                symbol.centerXAnchor.constraint(equalTo: balloon.centerXAnchor),
+                symbol.centerYAnchor.constraint(equalTo: balloon.centerYAnchor),
+                symbol.widthAnchor.constraint(equalToConstant: config.size * 0.45),
+                symbol.heightAnchor.constraint(equalToConstant: config.size * 0.45)
+            ])
+
+            view.insertSubview(balloon, belowSubview: theseusView)
+            balloonViews.append(balloon)
+            balloonPhysics.append(BalloonPhysicsState())
+        }
+    }
+
+    // MARK: - Animation Loop
+
+    private func startAnimationLoop() {
+        guard displayLink == nil else { return }
+        displayLink = CADisplayLink(target: self, selector: #selector(updateAnimations))
+        displayLink?.add(to: .main, forMode: .common)
+    }
+
+    private func stopAnimationLoop() {
+        displayLink?.invalidate()
+        displayLink = nil
+    }
+
+    @objc private func updateAnimations() {
+        updateBalloonPositions()
+        updatePulseAnimation()
+    }
+
+    private func updateBalloonPositions() {
+        let lensCenter = theseusView.center
+
+        for (index, balloon) in balloonViews.enumerated() {
+            let config = balloonConfigs[index]
+
+            if balloonPhysics[index].isReleased && !balloonPhysics[index].isDragging {
+                // Physics mode: gravity + velocity + bounce
+                balloonPhysics[index].velocity.y += 0.4  // Gravity
+                balloonPhysics[index].velocity.x *= 0.98  // Air resistance
+                balloonPhysics[index].velocity.y *= 0.98
+
+                var newCenter = balloon.center
+                newCenter.x += balloonPhysics[index].velocity.x
+                newCenter.y += balloonPhysics[index].velocity.y
+
+                // Floor bounce with strong friction
+                let floorY = view.bounds.height - balloon.bounds.height / 2 - 20
+                if newCenter.y >= floorY {
+                    newCenter.y = floorY
+                    balloonPhysics[index].velocity.y = -balloonPhysics[index].velocity.y * 0.4
+                    // Strong horizontal friction on ground to stop rolling
+                    balloonPhysics[index].velocity.x *= 0.85
+
+                    // Stop completely if moving very slowly
+                    if abs(balloonPhysics[index].velocity.y) < 0.5 {
+                        balloonPhysics[index].velocity.y = 0
+                    }
+                    if abs(balloonPhysics[index].velocity.x) < 0.3 {
+                        balloonPhysics[index].velocity.x = 0
+                    }
+                }
+
+                // Wall bounce
+                let minX = balloon.bounds.width / 2
+                let maxX = view.bounds.width - balloon.bounds.width / 2
+                if newCenter.x < minX {
+                    newCenter.x = minX
+                    balloonPhysics[index].velocity.x = -balloonPhysics[index].velocity.x * 0.5
+                } else if newCenter.x > maxX {
+                    newCenter.x = maxX
+                    balloonPhysics[index].velocity.x = -balloonPhysics[index].velocity.x * 0.5
+                }
+
+                // Ceiling bounce
+                let minY: CGFloat = 100
+                if newCenter.y < minY {
+                    newCenter.y = minY
+                    balloonPhysics[index].velocity.y = -balloonPhysics[index].velocity.y * 0.5
+                }
+
+                balloon.center = newCenter
+            } else if !balloonPhysics[index].isReleased {
+                // Normal drag-follow behavior with velocity smoothing
+                let radius = config.targetRadius * dragProgress
+                let targetX = lensCenter.x + cos(config.targetAngle) * radius
+                let targetY = lensCenter.y + sin(config.targetAngle) * radius - 40 * dragProgress
+
+                // Velocity-based smoothing for fluid following
+                let springFactor: CGFloat = 0.08  // Slower, smoother
+                let dampingFactor: CGFloat = 0.85  // Velocity damping
+
+                let dx = targetX - balloon.center.x
+                let dy = targetY - balloon.center.y
+
+                balloonPhysics[index].targetVelocity.x = balloonPhysics[index].targetVelocity.x * dampingFactor + dx * springFactor
+                balloonPhysics[index].targetVelocity.y = balloonPhysics[index].targetVelocity.y * dampingFactor + dy * springFactor
+
+                balloon.center.x += balloonPhysics[index].targetVelocity.x
+                balloon.center.y += balloonPhysics[index].targetVelocity.y
+
+                // Alpha based on progress (staggered appearance) - slower interpolation
+                let appearThreshold = CGFloat(index) * 0.06
+                let targetAlpha = max(0, min(1, (dragProgress - appearThreshold) * 4))
+                balloon.alpha += (targetAlpha - balloon.alpha) * 0.1
+            }
+        }
+    }
+
+    private func updatePulseAnimation() {
+        // Only pulse non-released balloons during drag
+        guard dragProgress > 0.05 else {
+            for (index, balloon) in balloonViews.enumerated() {
+                if !balloonPhysics[index].isReleased {
+                    balloon.transform = .identity
+                }
+            }
+            return
+        }
+
+        pulsePhase += 0.04
+
+        for (index, balloon) in balloonViews.enumerated() {
+            if !balloonPhysics[index].isReleased {
+                let phaseOffset = CGFloat(index) * 0.5
+                let pulseAmount = 0.08 * dragProgress
+                let pulse = 1.0 + sin(pulsePhase + phaseOffset) * pulseAmount
+                balloon.transform = CGAffineTransform(scaleX: pulse, y: pulse)
+            }
+        }
+    }
+
+    // MARK: - Balloon Gesture Handlers
+
+    private func setupBalloonGesture(for balloon: TheseusView, at index: Int) {
+        let handler = TheseusGestureDeformer(targetView: balloon)
+
+        handler.positionProvider = { [weak self] translation, currentCenter, bounds in
             guard let self = self else { return nil }
 
             var newCenter = CGPoint(
@@ -210,30 +563,53 @@ class ViewDemoViewController: UIViewController {
                 y: currentCenter.y + translation.y
             )
 
-            let glassSize = self.theseusView.bounds.size
-            let minX = glassSize.width / 2
-            let maxX = bounds.width - glassSize.width / 2
-            let minY = glassSize.height / 2 + 100
-            let maxY = bounds.height - glassSize.height / 2 - 50
-
-            newCenter.x = max(minX, min(maxX, newCenter.x))
-            newCenter.y = max(minY, min(maxY, newCenter.y))
+            // Keep within screen bounds
+            let size = balloon.bounds.size
+            newCenter.x = max(size.width / 2, min(bounds.width - size.width / 2, newCenter.x))
+            newCenter.y = max(100, min(bounds.height - size.height / 2 - 20, newCenter.y))
 
             return newCenter
         }
 
-        let instructionLabel = UILabel()
-        instructionLabel.text = "Drag me!"
-        instructionLabel.font = .systemFont(ofSize: 18, weight: .semibold)
-        instructionLabel.textColor = .label
-        instructionLabel.textAlignment = .center
-        instructionLabel.translatesAutoresizingMaskIntoConstraints = false
-        theseusView.addSubview(instructionLabel)
+        handler.onDragBegan = { [weak self] in
+            guard let self = self else { return }
+            self.balloonPhysics[index].isDragging = true
+            self.balloonPhysics[index].velocity = .zero
+            balloon.continuousUpdate = true
+        }
 
-        NSLayoutConstraint.activate([
-            instructionLabel.centerXAnchor.constraint(equalTo: theseusView.centerXAnchor),
-            instructionLabel.centerYAnchor.constraint(equalTo: theseusView.centerYAnchor)
-        ])
+        handler.onDragEnded = { [weak self] velocity in
+            guard let self = self else { return }
+            self.balloonPhysics[index].isDragging = false
+            // Apply throw velocity
+            self.balloonPhysics[index].velocity = CGPoint(
+                x: velocity.x * 0.08,
+                y: velocity.y * 0.08
+            )
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                balloon.continuousUpdate = false
+            }
+        }
+
+        balloonGestureHandlers.append(handler)
+    }
+
+    private func releaseBalloons() {
+        for (index, balloon) in balloonViews.enumerated() {
+            // Only release visible balloons
+            if balloon.alpha > 0.3 && !balloonPhysics[index].isReleased {
+                balloonPhysics[index].isReleased = true
+                // Give initial velocity based on their spread position
+                let config = balloonConfigs[index]
+                balloonPhysics[index].velocity = CGPoint(
+                    x: cos(config.targetAngle) * 2 + CGFloat.random(in: -1...1),
+                    y: CGFloat.random(in: (-4)...(-1))
+                )
+                // Setup gesture handler for this balloon
+                setupBalloonGesture(for: balloon, at: index)
+            }
+        }
     }
 
 }
@@ -486,8 +862,8 @@ class GlassViewSettingsViewController: UIViewController {
     @objc private func resetToDefaults() {
         blurSlider.value = 10.0
         blurValueLabel.text = "10"
-        cornerRadiusSlider.value = 16.0
-        cornerRadiusValueLabel.text = "16"
+        cornerRadiusSlider.value = 40.0
+        cornerRadiusValueLabel.text = "40"
         refractionSlider.value = 1.42
         refractionValueLabel.text = "1.42"
         fresnelSlider.value = 1.0

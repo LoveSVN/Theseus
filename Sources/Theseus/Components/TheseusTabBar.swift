@@ -66,6 +66,17 @@ public class TheseusTabBar: UIView {
         }
     }
 
+    public var selectionViewColor:UIColor = .clear {
+        didSet {
+            selectionView.backgroundColor = selectionViewColor
+        }
+    }
+
+    public var backgroundViewLightNormalColor:UIColor = UIColor.white.withAlphaComponent(0.6)
+    public var backgroundViewDarkNormalColor:UIColor = UIColor.black.withAlphaComponent(0.3)
+
+    public var backgroundViewLightHighlightColor:UIColor = UIColor.black.withAlphaComponent(0.3)
+    public var backgroundViewDarkHighlightColor:UIColor = UIColor.white.withAlphaComponent(0.6)
 
     private var itemViews: [TabItemView] = []
     private var theseusView: TheseusView?
@@ -178,8 +189,8 @@ public class TheseusTabBar: UIView {
         }
 
         backgroundView.backgroundColor = isDark
-            ? UIColor.black.withAlphaComponent(0.3)
-            : UIColor.white.withAlphaComponent(0.6)
+            ? backgroundViewDarkNormalColor
+            : backgroundViewLightNormalColor
 
         if #available(iOS 13.0, *) {
             selectionView.tintColor = UIColor.label.withAlphaComponent(0.05)
@@ -543,12 +554,12 @@ public class TheseusTabBar: UIView {
 
         if isLifted {
             backgroundView.backgroundColor = isDark
-                ? UIColor.black.withAlphaComponent(0.4)
-                : UIColor.white.withAlphaComponent(0.75)
+                ? backgroundViewDarkHighlightColor
+                : backgroundViewLightHighlightColor
         } else {
             backgroundView.backgroundColor = isDark
-                ? UIColor.black.withAlphaComponent(0.3)
-                : UIColor.white.withAlphaComponent(0.6)
+            ? backgroundViewDarkNormalColor
+                : backgroundViewLightNormalColor
         }
     }
 
@@ -849,7 +860,7 @@ private class TabItemView: UIView {
     override var tintColor: UIColor! {
         didSet {
             iconImageView.tintColor = tintColor
-            titleLabel.textColor = tintColor
+            titleLabel.tintColor = tintColor
         }
     }
 }

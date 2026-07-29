@@ -6,12 +6,16 @@ public struct TheseusTabBarItem {
     public var icon: UIImage?
     public var selectedIcon: UIImage?
     public var title: String?
+    public var normalTitleColor:UIColor?
+    public var selectedTitleColor:UIColor?
     public var badge: String?
 
-    public init(icon: UIImage? = nil, selectedIcon: UIImage? = nil, title: String? = nil, badge: String? = nil) {
+    public init(icon: UIImage? = nil, selectedIcon: UIImage? = nil, title: String? = nil,normalTitleColor:UIColor? = nil,selectedTitleColor:UIColor? = nil, badge: String? = nil) {
         self.icon = icon
         self.selectedIcon = selectedIcon
         self.title = title
+        self.normalTitleColor = normalTitleColor
+        self.selectedTitleColor = selectedTitleColor
         self.badge = badge
     }
 }
@@ -838,16 +842,16 @@ private class TabItemView: UIView {
     func configure(with item: TheseusTabBarItem, isSelected: Bool) {
         self.item = item
         iconImageView.image = (isSelected ? item.selectedIcon : item.icon) ?? item.icon
-        iconImageView.image = iconImageView.image?.withRenderingMode(.alwaysTemplate)
         titleLabel.text = item.title
+        titleLabel.textColor =  (isSelected ? item.selectedTitleColor : item.normalTitleColor)
         titleLabel.isHidden = item.title == nil
     }
 
     func updateSelection(isSelected: Bool, animated: Bool) {
         guard let item = item else { return }
         let newIcon = (isSelected ? item.selectedIcon : item.icon) ?? item.icon
-        iconImageView.image = newIcon?.withRenderingMode(.alwaysTemplate)
-
+        iconImageView.image = newIcon
+        titleLabel.textColor =  (isSelected ? item.selectedTitleColor : item.normalTitleColor)
         if animated {
             UIView.animate(withDuration: 0.2) {
                 self.iconImageView.transform = isSelected ? CGAffineTransform(scaleX: 1.1, y: 1.1) : .identity

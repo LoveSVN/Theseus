@@ -576,7 +576,7 @@ public class TheseusTabBar: UIView {
             UIColor.clear.setFill()
             ctx.fill(CGRect(origin: .zero, size: bounds.size))
 
-            for itemView in itemViews {
+            for (index,itemView) in itemViews.enumerated() {
                 let itemFrame = itemView.frame
                 let scale: CGFloat = 1.25
 
@@ -586,7 +586,8 @@ public class TheseusTabBar: UIView {
                 ctx.cgContext.translateBy(x: -itemFrame.width / 2.0, y: -itemFrame.height / 2.0)
 
                 let originalTint = itemView.tintColor
-                itemView.tintColor = selectedTintColor
+                let barItem =  items[index]
+                itemView.configure(with: barItem, isSelected: true)
                 itemView.layer.render(in: ctx.cgContext)
                 itemView.tintColor = originalTint
 

@@ -72,7 +72,7 @@ final class MetalContext {
 
     private static func loadMetalLibrary(device: MTLDevice) -> MTLLibrary? {
         // Try to load from SPM module bundle first
-        let bundle = Bundle.module
+        let bundle = Bundle(for: Self.self)
 
         // Look for default.metallib in the bundle
         if let libraryURL = bundle.url(forResource: "default", withExtension: "metallib") {

@@ -78,6 +78,11 @@ public class TheseusTabBar: UIView {
     public var backgroundViewLightHighlightColor:UIColor = UIColor.black.withAlphaComponent(0.3)
     public var backgroundViewDarkHighlightColor:UIColor = UIColor.white.withAlphaComponent(0.6)
 
+    /// 允许外部指定拖拽态玻璃的采样源，避免默认采到整页内容。
+    public weak var dragGlassSourceView: UIView?
+    /// 允许外部指定拖拽态玻璃的承载容器，保证层级落在预期区域内。
+    public weak var dragGlassContainerView: UIView?
+
     private var itemViews: [TabItemView] = []
     private var theseusView: TheseusView?
     private var theseusStretchAnimator: TheseusStretchAnimator?
@@ -392,6 +397,11 @@ public class TheseusTabBar: UIView {
 
 
     private var theseusSourceView: UIView? {
+
+        if let dragGlassSourceView {
+            return dragGlassSourceView
+        }
+
         if let rootView = window?.rootViewController?.view {
             return rootView
         }
@@ -411,7 +421,10 @@ public class TheseusTabBar: UIView {
     }
 
     private var theseusContainer: UIView? {
-        theseusSourceView?.superview
+        if let dragGlassContainerView {
+            return dragGlassContainerView
+        }
+        return theseusSourceView?.superview
     }
 
     private func convertToTheseusContainer(_ frame: CGRect) -> CGRect {

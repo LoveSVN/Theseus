@@ -590,7 +590,7 @@ public class TheseusTabBar: UIView {
                 itemView.configure(with: barItem, isSelected: true)
                 itemView.layer.render(in: ctx.cgContext)
                 itemView.tintColor = originalTint
-
+                itemView.configure(with: barItem, isSelected: selectedIndex == index)
                 ctx.cgContext.restoreGState()
             }
         }

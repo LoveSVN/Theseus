@@ -70,11 +70,7 @@ public class TheseusTabBar: UIView {
         }
     }
 
-    public var selectionViewColor:UIColor = .clear {
-        didSet {
-            selectionView.backgroundColor = selectionViewColor
-        }
-    }
+    public var selectionViewColor:UIColor = .white
 
     public var backgroundViewLightNormalColor:UIColor = UIColor.white.withAlphaComponent(0.6)
     public var backgroundViewDarkNormalColor:UIColor = UIColor.black.withAlphaComponent(0.3)
@@ -269,14 +265,14 @@ public class TheseusTabBar: UIView {
         let image = UIGraphicsImageRenderer(size: size).image { ctx in
             let rect = CGRect(origin: .zero, size: size)
             let path = UIBezierPath(roundedRect: rect, cornerRadius: radius)
-            UIColor.white.setFill()
+            selectionViewColor.setFill()
             path.fill()
         }
 
         return image.resizableImage(
             withCapInsets: UIEdgeInsets(top: radius, left: radius, bottom: radius, right: radius),
             resizingMode: .stretch
-        ).withRenderingMode(.alwaysTemplate)
+        )
     }
 
     private func updateSelectionViewFrame(animated: Bool) {
